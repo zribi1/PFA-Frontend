@@ -4,9 +4,9 @@ import { Phone, Mail, MapPin, Facebook, Instagram, Linkedin, Twitter } from 'luc
 
 const Footer = () => {
   return (
-    <footer className="bg-brand-blue text-white pt-16 pb-8 relative overflow-hidden">
+    <footer className="bg-brand-blue text-white pt-10 pb-8 relative overflow-hidden">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {/* About */}
           <div className="animate-fade-up" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center gap-2 mb-4">
@@ -34,26 +34,12 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Services */}
-          <div className="animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            <h3 className="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Services RH</h3>
-            <ul className="space-y-2">
-              {['Gestion des employés', 'Recrutement', 'Évaluations de performance', 'Gestion des congés', 'Gestion des absences', 'Formation continue'].map((service) => (
-                <li key={service}>
-                  <Link to="#" className="text-gray-300 hover:text-brand-yellow transition-colors">
-                    {service}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Quick Links */}
           <div className="animate-fade-up" style={{ animationDelay: '0.3s' }}>
             <h3 className="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Liens Rapides</h3>
-            <ul className="space-y-2">
-              {[ 
-                { name: 'Accueil', path: '/' }, 
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {[
+                { name: 'Accueil', path: '/' },
                 { name: 'Gérer les employés', path: '/gerer-employes' },
                 { name: 'Recrutement', path: '/recrutement' },
                 { name: 'Congés et absences', path: '/conges-absences' },
@@ -68,6 +54,7 @@ const Footer = () => {
               ))}
             </ul>
           </div>
+
 
           {/* Contact */}
           <div className="animate-fade-up" style={{ animationDelay: '0.4s' }}>
@@ -94,7 +81,7 @@ const Footer = () => {
         </div>
 
         {/* Bottom */}
-        <div className="pt-8 border-t border-gray-800 text-center text-gray-400">
+        <div className="pt-0 text-center text-gray-400">
           <p className="animate-fade-up" style={{ animationDelay: '0.5s' }}>
             © {new Date().getFullYear()} IIT Sfax. Tous droits réservés.
           </p>

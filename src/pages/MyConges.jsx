@@ -1,62 +1,88 @@
-// ✅ This is the same Conges.jsx logic but adapted to "MyConge" for employees
-// Rename the file to: src/pages/MyConge.jsx
-
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import NavbarEmp from '../components/layout/NavbarEmp'
 import Footer from '../components/layout/Footer'
-import {
-  Calendar,
-  Eye,
-  PlusCircle
-} from 'lucide-react'
+import { Calendar, Eye, PlusCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const statuses = [
-  { label: 'Tous',       value: ''           },
+  { label: 'Tous', value: '' },
   { label: 'En attente', value: 'en_attente' },
-  { label: 'Accepté',    value: 'accepte'    },
-  { label: 'Refusé',     value: 'refuse'     }
+  { label: 'Accepté', value: 'accepte' },
+  { label: 'Refusé', value: 'refuse' }
 ]
 
 export default function MyConge() {
-  const [conges,       setConges]       = useState([])
-  const [filtered,     setFiltered]     = useState([])
-  const [loading,      setLoading]      = useState(true)
+  const [conges, setConges] = useState([])
+  const [filtered, setFiltered] = useState([])
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
-  const [showDetail,   setShowDetail]   = useState(false)
-  const [detailConge,  setDetailConge]  = useState(null)
-  const [showForm,     setShowForm]     = useState(false)
-  const [form,         setForm]         = useState({ motif: '', date_debut: '', date_fin: '' })
+  const [showDetail, setShowDetail] = useState(false)
+  const [detailConge, setDetailConge] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ motif: '', date_debut: '', date_fin: '' })
+  const [enseignantId, setEnseignantId] = useState(null)
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
+  // Au montage, on récupère l’e-mail de l’utilisateur connecté,
+  // on récupère son enseignant_id, puis on charge ses congés uniquement.
   useEffect(() => {
-    loadConges()
-  }, [])
+    const user = JSON.parse(localStorage.getItem('user'))
+    if (!user?.email) {
+      console.warn('⚠️ Aucun utilisateur connecté')
+      setLoading(false)
+      return
+    }
 
-  const loadConges = () => {
-    setLoading(true)
-    axios.get(`${API}/api/mes_conges`)
+    // 1) Interroger l’endpoint qui renvoie l’enseignant par e-mail
+    axios
+      .get(`${API}/enseignant-by-email`, {
+        params: { email: user.email },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      })
       .then(({ data }) => {
+        if (data?.id) {
+          setEnseignantId(data.id)
+
+          // 2) Charger uniquement les congés de cet enseignant
+          // On suppose qu’il existe une route GET /conges/enseignant/{id}
+          return axios.get(`${API}/conges/enseignant/${data.id}`)
+        } else {
+          throw new Error('Aucun enseignant trouvé pour cet e-mail')
+        }
+      })
+      .then(({ data }) => {
+        // data contient déjà uniquement les congés de l’enseignant connecté
         const ui = data.map(c => ({
-          id:             c.id,
-          date_debut:     c.date_debut.slice(0, 10),
-          date_fin:       c.date_fin.slice(0, 10),
-          motif:          c.motif,
-          statut:         c.etat,
-          nbr_jours_conge:c.nbr_jours_conge
+          id: c.id,
+          date_debut: c.date_debut.slice(0, 10),
+          date_fin: c.date_fin.slice(0, 10),
+          motif: c.motif,
+          statut: c.etat,
+          nbr_jours_conge: c.nbr_jours_conge
         }))
         setConges(ui)
         setFiltered(ui)
       })
-      .catch(err => console.error('Erreur chargement congés :', err))
-      .finally(() => setLoading(false))
-  }
+      .catch(err => {
+        console.error('❌ Erreur lors du chargement des congés :', err.response || err)
+        setConges([])
+        setFiltered([])
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
 
+  // Filtre local sur le statut
   useEffect(() => {
     let tmp = [...conges]
-    if (statusFilter) tmp = tmp.filter(c => c.statut === statusFilter)
+    if (statusFilter) {
+      tmp = tmp.filter(c => c.statut === statusFilter)
+    }
     setFiltered(tmp)
   }, [statusFilter, conges])
 
@@ -67,13 +93,46 @@ export default function MyConge() {
 
   const handleFormSubmit = e => {
     e.preventDefault()
-    axios.post(`${API}/api/conges`, form)
+    if (!form.motif || !form.date_debut || !form.date_fin || !enseignantId) {
+      alert('Tous les champs sont obligatoires.')
+      return
+    }
+
+    // Préparer payload avec enseignant_id
+    const data = {
+      ...form,
+      enseignant_id: enseignantId
+    }
+
+    axios
+      .post(`${API}/conges`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        }
+      })
       .then(() => {
         setShowForm(false)
         setForm({ motif: '', date_debut: '', date_fin: '' })
-        loadConges()
+        // Recharger uniquement les congés de l’enseignant actuel
+        return axios.get(`${API}/conges/enseignant/${enseignantId}`)
       })
-      .catch(err => alert('Erreur lors de la demande : ' + err))
+      .then(({ data }) => {
+        const ui = data.map(c => ({
+          id: c.id,
+          date_debut: c.date_debut.slice(0, 10),
+          date_fin: c.date_fin.slice(0, 10),
+          motif: c.motif,
+          statut: c.etat,
+          nbr_jours_conge: c.nbr_jours_conge
+        }))
+        setConges(ui)
+        setFiltered(ui)
+      })
+      .catch(err => {
+        console.error('❌ Erreur lors de la demande de congé :', err.response || err)
+        alert('Erreur lors de la création de la demande de congé.')
+      })
   }
 
   return (
@@ -85,7 +144,7 @@ export default function MyConge() {
             <h1 className="text-3xl font-bold text-brand-blue">Mes demandes de congé</h1>
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
             >
               <PlusCircle className="w-5 h-5" /> Nouvelle demande
             </button>
@@ -169,15 +228,22 @@ export default function MyConge() {
       </main>
       <Footer />
 
-      {/* Modal */}
       {showDetail && detailConge && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h2 className="text-xl font-bold mb-4">Détail du congé</h2>
-            <p><strong>Motif :</strong> {detailConge.motif}</p>
-            <p><strong>Du :</strong> {detailConge.date_debut}</p>
-            <p><strong>Au :</strong> {detailConge.date_fin}</p>
-            <p><strong>Nombre de jours :</strong> {detailConge.nbr_jours_conge}</p>
+            <p>
+              <strong>Motif :</strong> {detailConge.motif}
+            </p>
+            <p>
+              <strong>Du :</strong> {detailConge.date_debut}
+            </p>
+            <p>
+              <strong>Au :</strong> {detailConge.date_fin}
+            </p>
+            <p>
+              <strong>Nombre de jours :</strong> {detailConge.nbr_jours_conge}
+            </p>
             <div className="mt-6 text-right">
               <button
                 onClick={() => setShowDetail(false)}
@@ -190,7 +256,6 @@ export default function MyConge() {
         </div>
       )}
 
-      {/* Modal Nouvelle Demande */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
@@ -235,7 +300,7 @@ export default function MyConge() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   Envoyer
                 </button>

@@ -62,12 +62,12 @@ const DemandesFinanciers = () => {
   const [showDetail,   setShowDetail]   = useState(false);
   const [detailDemande, setDetailDemande] = useState(null);
 
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
   // 1️⃣ Fetch & normalisation
   useEffect(() => {
     setLoading(true);
-    axios.get(`${baseUrl}/api/demandes_financieres`)
+    axios.get(`${baseUrl}/demandes_financieres`)
       .then(({ data }) => {
         const mapped = data.map(d => ({
           ...d,
@@ -113,7 +113,7 @@ const DemandesFinanciers = () => {
 
   // 3️⃣ Mettre à jour le statut
   const changeStatut = (id, newStatut) => {
-    axios.patch(`${baseUrl}/api/demandes_financieres/${id}`, { etat: newStatut })
+    axios.patch(`${baseUrl}/demandes_financieres/${id}`, { etat: newStatut })
       .then(({ data }) => {
         setDemandes(ds =>
           ds.map(d => d.id === id ? { ...d, statut: data.etat } : d)
@@ -124,7 +124,7 @@ const DemandesFinanciers = () => {
   // 4️⃣ Supprimer
   const deleteDemande = id => {
     if (!window.confirm('Confirmer la suppression ?')) return;
-    axios.delete(`${baseUrl}/api/demandes_financieres/${id}`)
+    axios.delete(`${baseUrl}/demandes_financieres/${id}`)
       .then(() => {
         setDemandes(ds => ds.filter(d => d.id !== id));
       });

@@ -32,13 +32,13 @@ export default function Conges() {
   const [showDetail,   setShowDetail]   = useState(false)
   const [detailConge,  setDetailConge]  = useState(null)
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
   // 1️⃣ Chargement initial depuis l'API
   useEffect(() => {
     setLoading(true)
     axios
-      .get(`${API}/api/conges`)
+      .get(`${API}/conges`)
       .then(({ data }) => {
         const ui = data.map(c => ({
           id:             c.id,
@@ -76,7 +76,7 @@ export default function Conges() {
   // 3️⃣ Mettre à jour le statut
   const changeStatut = (id, nouveau) => {
     axios
-      .put(`${API}/api/conges/${id}`, { etat: nouveau })
+      .put(`${API}/conges/${id}`, { etat: nouveau })
       .then(({ data }) => {
         setConges(cs =>
           cs.map(c =>
@@ -93,7 +93,7 @@ export default function Conges() {
   const deleteConge = id => {
     if (!window.confirm('Confirmer la suppression ?')) return
     axios
-      .delete(`${API}/api/conges/${id}`)
+      .delete(`${API}/conges/${id}`)
       .then(() => {
         setConges(cs => cs.filter(c => c.id !== id))
       })

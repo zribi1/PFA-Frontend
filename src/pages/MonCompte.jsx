@@ -1,60 +1,51 @@
-// src/pages/Communication.jsx
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import {
   MessageCircle,
   Bell,
-  Clipboard,
   Search,
   Send,
-  Plus,
-  X
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Communication() {
   const [tab, setTab] = useState('messagerie')
   const [search, setSearch] = useState('')
-
-  // — Messagerie —
   const [users, setUsers] = useState([])
   const [messages, setMessages] = useState([])
-  const [currentUser, setCurrentUser] = useState(null)
   const [recipient, setRecipient] = useState(null)
   const [draft, setDraft] = useState('')
-
-  // — Annonces —
   const [annonces, setAnnonces] = useState([])
   const [newAnnonce, setNewAnnonce] = useState({ title: '', content: '' })
-
-  // — Tableau d’affichage —
-  const [board, setBoard] = useState([])
-  const [newInfo, setNewInfo] = useState('')
+  const [currentUser, setCurrentUser] = useState(null)
 
   const api = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+
+  // ✅ Charger user.id depuis localStorage
+  useEffect(() => {
+    const u = JSON.parse(localStorage.getItem('user'))
+    if (u?.id) setCurrentUser(u.id)
+  }, [])
 
   useEffect(() => {
     async function loadAll() {
       try {
-        const [rMsgs, rAnons, rBoard] = await Promise.all([
+        const [rMsgs, rAnons] = await Promise.all([
           fetch(`${api}/messages`, { headers: { Accept: 'application/json' } }),
-          fetch(`${api}/annonces`, { headers: { Accept: 'application/json' } }),
-          fetch(`${api}/board`, { headers: { Accept: 'application/json' } }),
+          fetch(`${api}/annonces`, { headers: { Accept: 'application/json' } })
         ])
-
-        const msgs  = rMsgs.ok  ? await rMsgs.json()  : []
+        const msgs = rMsgs.ok ? await rMsgs.json() : []
         const anons = rAnons.ok ? await rAnons.json() : []
-        const b     = rBoard.ok ? await rBoard.json() : []
 
         setMessages(msgs)
         setAnnonces(anons)
-        setBoard(b)
 
-        // lookup users for messagerie
         const ids = Array.from(new Set(
           msgs.flatMap(m => [m.from_user, m.to_user]).filter(Boolean)
         ))
+
         if (ids.length) {
           const rUsers = await fetch(
             `${api}/messages/users?ids=${ids.join(',')}`,
@@ -63,7 +54,6 @@ export default function Communication() {
           if (rUsers.ok) {
             const us = await rUsers.json()
             setUsers(us)
-            setCurrentUser(us[0]?.id || null)
             setRecipient(us[1]?.id || us[0]?.id || null)
           }
         }
@@ -92,7 +82,9 @@ export default function Communication() {
   }
 
   const postAnnonce = async () => {
-    if (!newAnnonce.title.trim() || !currentUser) return
+    if (!newAnnonce.title.trim()) return alert('Le titre est obligatoire.')
+    if (!currentUser) return alert('Utilisateur non authentifié.')
+
     try {
       const res = await fetch(`${api}/annonces`, {
         method: 'POST',
@@ -101,40 +93,11 @@ export default function Communication() {
       })
       if (!res.ok) throw new Error(`Status ${res.status}`)
       const a = await res.json()
-      setAnnonces(an => [a, ...an])
+      setAnnonces(prev => [a, ...prev])
       setNewAnnonce({ title: '', content: '' })
     } catch (err) {
       console.error('Error posting annonce', err)
-    }
-  }
-
-  const postInfo = async () => {
-    if (!newInfo.trim() || !currentUser) return
-    try {
-      const res = await fetch(`${api}/board`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ info: newInfo, created_by: currentUser })
-      })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-      const i = await res.json()
-      setBoard(b => [i, ...b])
-      setNewInfo('')
-    } catch (err) {
-      console.error('Error posting info', err)
-    }
-  }
-
-  const deleteInfo = async id => {
-    try {
-      const res = await fetch(`${api}/board/${id}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json' }
-      })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-      setBoard(b => b.filter(x => x.id !== id))
-    } catch (err) {
-      console.error('Error deleting info', err)
+      alert("Erreur lors de la publication de l'annonce.")
     }
   }
 
@@ -147,8 +110,7 @@ export default function Communication() {
           <div className="flex items-center gap-4 mb-6">
             {[
               { key: 'messagerie', icon: MessageCircle, label: 'Messagerie' },
-              { key: 'annonces',   icon: Bell,          label: 'Annonces'   },
-              { key: 'board',      icon: Clipboard,     label: 'Tableau'    }
+              { key: 'annonces', icon: Bell, label: 'Annonces' }
             ].map(def => (
               <button
                 key={def.key}
@@ -178,7 +140,7 @@ export default function Communication() {
             <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
           </div>
 
-          {/* Contenu par onglet */}
+          {/* Messagerie */}
           {tab === 'messagerie' && (
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-semibold mb-4">Messagerie interne</h2>
@@ -216,7 +178,7 @@ export default function Communication() {
                   .filter(m => {
                     const fromName = users.find(u => u.id === m.from_user)?.name || ''
                     return fromName.toLowerCase().includes(search.toLowerCase())
-                        || m.text.toLowerCase().includes(search.toLowerCase())
+                      || m.text.toLowerCase().includes(search.toLowerCase())
                   })
                   .map(m => (
                     <div key={m.id} className="py-2">
@@ -231,8 +193,7 @@ export default function Communication() {
                       </div>
                       <div className="mt-1">{m.text}</div>
                     </div>
-                  ))
-                }
+                  ))}
               </div>
 
               <div className="flex gap-2">
@@ -254,6 +215,7 @@ export default function Communication() {
             </div>
           )}
 
+          {/* Annonces */}
           {tab === 'annonces' && (
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-semibold mb-4">Annonces & notifications</h2>
@@ -270,8 +232,7 @@ export default function Communication() {
                       </div>
                       <p className="text-gray-700">{a.content}</p>
                     </div>
-                  ))
-                }
+                  ))}
               </div>
               <div className="mt-6 border-t pt-4">
                 <h3 className="font-medium mb-2">Nouvelle annonce</h3>
@@ -298,45 +259,6 @@ export default function Communication() {
               </div>
             </div>
           )}
-
-          {tab === 'board' && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-semibold mb-4">Tableau d’affichage</h2>
-              <ul className="divide-y divide-gray-200 mb-4">
-                {board
-                  .filter(b => b.info.toLowerCase().includes(search.toLowerCase()))
-                  .map(b => (
-                    <li key={b.id} className="py-2 flex justify-between items-center">
-                      <span>{b.info}</span>
-                      <button
-                        onClick={() => deleteInfo(b.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </li>
-                  ))
-                }
-              </ul>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="flex-1 border rounded-xl px-4 py-2"
-                  placeholder="Ajouter une info"
-                  value={newInfo}
-                  onChange={e => setNewInfo(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && postInfo()}
-                />
-                <button
-                  onClick={postInfo}
-                  className="bg-brand-blue text-white rounded-xl px-4 flex items-center gap-2 hover:bg-brand-darkBlue"
-                >
-                  <Plus className="w-5 h-5" /> Ajouter
-                </button>
-              </div>
-            </div>
-          )}
-
         </div>
       </main>
       <Footer />
